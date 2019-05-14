@@ -90,11 +90,14 @@ def tempdir():
 
 @pytest.fixture(scope='function')
 def disk_store():
+    yield next(_create_disk_store())
+
+
+def _create_disk_store():
     with tempdir() as dirname:
         yield bs.DiskStore(cachedir=dirname, delete=True)
 
 
-@pytest.fixture(scope='function')
 def memory_store():
     return bs.MemoryStore()
 
@@ -124,6 +127,9 @@ db_session_ = db_session
                      #   'chained-repo'
                 ])
 def repo(request, db_session):
+    yield next(_repo(request, db_session))
+
+def _repo(request, db_session):
     # clean old config settings
     r.Config.set_current(r.Config({}, {}, None))
     disk_store_gen = None
@@ -133,15 +139,15 @@ def repo(request, db_session):
     if request.param == 'memoryrepo':
         repo = r.MemoryRepo(read=True, write=True, delete=True)
     elif request.param == 'dbrepo-diskstore':
-        disk_store_gen = disk_store()
+        disk_store_gen = _create_disk_store()
         repo = r.DbRepo(db_session, next(disk_store_gen),
                         read=True, write=True, delete=True)
     elif request.param == 'chained-memmem':
         repo = r.ChainedRepo([r.MemoryRepo(read=True, write=True, delete=True),
                               r.MemoryRepo(read=True, write=True, delete=True)])
     elif request.param == 'chained-repo':
-        disk_store_gen = disk_store()
-        disk_store_gen2 = disk_store()
+        disk_store_gen = _create_disk_store()
+        disk_store_gen2 = _create_disk_store()
         repo1 = r.DbRepo(db_session, next(disk_store_gen),
                         read=True, write=True, delete=True)
         os.chdir(prevdir)
@@ -168,7 +174,7 @@ def repo(request, db_session):
 
 @pytest.fixture(scope='function', params=['dbrepo-diskstore'])
 def dbdiskrepo(request, db_session):
-    repo_gen = repo(request, db_session)
+    repo_gen = _repo(request, db_session)
     yield next(repo_gen)
     next(repo_gen, 'ignore')
 
@@ -179,7 +185,7 @@ another_dbdiskrepo = dbdiskrepo
 @pytest.fixture(scope='function',
                 params=['memoryrepo' 'dbrepo-diskstore', 'dbrepo-memorystore'])
 def atomic_repo(request, db_session):
-    repo_gen = repo(request, db_session)
+    repo_gen = _repo(request, db_session)
     yield next(repo_gen)
     next(repo_gen, 'ignore')
 

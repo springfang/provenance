@@ -75,7 +75,7 @@ def test_blobstores_config_reading():
                                                  bs.MemoryStore,
                                                  bs.S3Store]
 
-def test_from_config():
+def test_from_config(db_conn_str):
     config = {'blobstores':
               {'mem':
                {'type': 'memory',
@@ -86,7 +86,7 @@ def test_from_config():
               'artifact_repos':
               {'db':
                {'type': 'postgres',
-                'db': ct.db_conn_str(),
+                'db': db_conn_str,
                 'store': 'mem'}}}
     objs = c.from_config(config)
     repo = objs['repos']['db']
